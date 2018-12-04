@@ -19,7 +19,7 @@ package com.haulmont.cuba.portal.sys;
 
 import com.google.common.base.Strings;
 import com.haulmont.bali.util.ParamsMap;
-import com.haulmont.cuba.client.sys.UsersStore;
+import com.haulmont.cuba.client.sys.UsersRepository;
 import com.haulmont.cuba.core.global.*;
 import com.haulmont.cuba.core.sys.AppContext;
 import com.haulmont.cuba.core.sys.SecurityContext;
@@ -65,7 +65,7 @@ public class PortalConnection implements Connection {
     @Inject
     protected Messages messages;
     @Inject
-    protected UsersStore usersStore;
+    protected UsersRepository usersRepository;
     @Inject
     protected PasswordEncryption passwordEncryption;
     @Inject
@@ -136,7 +136,7 @@ public class PortalConnection implements Connection {
         }
 
         UserSession systemSession = trustedClientService.getSystemSession(portalConfig.getTrustedClientPassword());
-        User user = AppContext.withSecurityContext(new SecurityContext(systemSession), () -> usersStore.findUserByLogin(login));
+        User user = AppContext.withSecurityContext(new SecurityContext(systemSession), () -> usersRepository.findUserByLogin(login));
 
         if (user == null) {
             throw new LoginException(getInvalidCredentialsMessage(login, credentialsLocale));

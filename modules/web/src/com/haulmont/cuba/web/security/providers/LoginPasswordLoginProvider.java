@@ -17,8 +17,7 @@
 package com.haulmont.cuba.web.security.providers;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
-import com.haulmont.cuba.client.sys.UsersStore;
+import com.haulmont.cuba.client.sys.UsersRepository;
 import com.haulmont.cuba.core.global.ClientType;
 import com.haulmont.cuba.core.global.Messages;
 import com.haulmont.cuba.core.global.PasswordEncryption;
@@ -36,12 +35,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
-
-import static com.haulmont.cuba.web.security.ExternalUserCredentials.EXTERNAL_AUTH_USER_SESSION_ATTRIBUTE;
 
 @Component("cuba_LoginPasswordLoginProvider")
 public class LoginPasswordLoginProvider implements LoginProvider, Ordered {
@@ -50,7 +44,7 @@ public class LoginPasswordLoginProvider implements LoginProvider, Ordered {
     @Inject
     protected Messages messages;
     @Inject
-    protected UsersStore usersStore;
+    protected UsersRepository usersRepository;
     @Inject
     protected PasswordEncryption passwordEncryption;
     @Inject
@@ -87,7 +81,7 @@ public class LoginPasswordLoginProvider implements LoginProvider, Ordered {
         }
 
         UserSession systemSession = trustedClientService.getSystemSession(webAuthConfig.getTrustedClientPassword());
-        User user = AppContext.withSecurityContext(new SecurityContext(systemSession), () -> usersStore.findUserByLogin(login));
+        User user = AppContext.withSecurityContext(new SecurityContext(systemSession), () -> usersRepository.findUserByLogin(login));
 
         if (user == null) {
             throw new LoginException(getInvalidCredentialsMessage(login, credentialsLocale));

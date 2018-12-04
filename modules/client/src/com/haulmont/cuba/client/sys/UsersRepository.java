@@ -23,23 +23,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.Optional;
 
-@Component(UsersStore.NAME)
-public class UsersStore {
-    public static final String NAME = "cuba_UsersStore";
+@Component(UsersRepository.NAME)
+public class UsersRepository {
+    public static final String NAME = "cuba_UsersRepository";
 
     @Inject
     protected DataManager dataManager;
 
-    private final Logger log = LoggerFactory.getLogger(UsersStore.class);
+    private final Logger log = LoggerFactory.getLogger(UsersRepository.class);
 
     /**
-     * Finds active user by login. Uses for client auth.
+     * Finds active user by login. Used for client authentication.
      * @param login - user login
+     * @return user by login
      */
-    public User findUserByLogin(String login) {
+    public @Nullable User findUserByLogin(String login) {
         if (login == null) {
             throw new IllegalArgumentException("Login is null");
         }

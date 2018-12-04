@@ -17,7 +17,7 @@
 package com.haulmont.restapi.auth;
 
 import com.google.common.base.Strings;
-import com.haulmont.cuba.client.sys.UsersStore;
+import com.haulmont.cuba.client.sys.UsersRepository;
 import com.haulmont.cuba.core.global.*;
 import com.haulmont.cuba.core.sys.AppContext;
 import com.haulmont.cuba.core.sys.SecurityContext;
@@ -45,7 +45,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.common.exceptions.InvalidGrantException;
-import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -72,7 +71,7 @@ public class CubaUserAuthenticationProvider implements AuthenticationProvider {
     protected Messages messages;
 
     @Inject
-    protected UsersStore usersStore;
+    protected UsersRepository usersRepository;
 
     @Inject
     protected TrustedClientService trustedClientService;
@@ -170,7 +169,7 @@ public class CubaUserAuthenticationProvider implements AuthenticationProvider {
         }
 
         UserSession systemSession = trustedClientService.getSystemSession(restApiConfig.getTrustedClientPassword());
-        User user = AppContext.withSecurityContext(new SecurityContext(systemSession), () -> usersStore.findUserByLogin(login));
+        User user = AppContext.withSecurityContext(new SecurityContext(systemSession), () -> usersRepository.findUserByLogin(login));
 
         if (user == null) {
             throw new LoginException(getInvalidCredentialsMessage(login, credentialsLocale));
