@@ -22,17 +22,22 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.haulmont.cuba.core.entity.Entity;
 import com.haulmont.cuba.core.global.MetadataTools;
+import com.haulmont.cuba.gui.ComponentsHelper;
+import com.haulmont.cuba.gui.Notifications;
 import com.haulmont.cuba.gui.components.CaptionMode;
 import com.haulmont.cuba.gui.components.OptionsList;
-import com.haulmont.cuba.gui.components.data.ValueSource;
 import com.haulmont.cuba.gui.components.data.meta.EntityOptions;
 import com.haulmont.cuba.gui.components.data.meta.EntityValueSource;
 import com.haulmont.cuba.gui.components.data.meta.OptionsBinding;
 import com.haulmont.cuba.gui.components.data.Options;
 import com.haulmont.cuba.gui.components.data.options.MapOptions;
+import com.haulmont.cuba.gui.components.data.options.ContainerOptions;
 import com.haulmont.cuba.gui.components.data.options.OptionsBinder;
+import com.haulmont.cuba.gui.model.CollectionContainer;
+import com.haulmont.cuba.gui.screen.ScreenContext;
 import com.haulmont.cuba.web.widgets.CubaListSelect;
 import com.vaadin.v7.data.util.IndexedContainer;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 
 import javax.inject.Inject;
@@ -41,7 +46,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V> implements OptionsList<V, I> {
+public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V>
+        implements OptionsList<V, I>, InitializingBean {
 
     protected MetadataTools metadataTools;
     protected ApplicationContext applicationContext;
@@ -55,14 +61,22 @@ public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V> im
     @SuppressWarnings("unchecked")
     public WebOptionsList() {
         component = createComponent();
-        component.setContainerDataSource(new IndexedContainer());
-        component.setItemCaptionGenerator(o -> generateItemCaption((I) o));
-
-        attachListener(component);
     }
 
     protected CubaListSelect createComponent() {
         return new CubaListSelect();
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        initComponent(component);
+    }
+
+    protected void initComponent(CubaListSelect component) {
+        component.setContainerDataSource(new IndexedContainer());
+        component.setItemCaptionGenerator(o -> generateItemCaption((I) o));
+
+        attachListener(component);
     }
 
     protected String generateDefaultItemCaption(I item) {
@@ -117,10 +131,7 @@ public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V> im
                     .filter(collectionValue::contains);
 
             if (valueBinding != null) {
-                ValueSource<V> valueSource = valueBinding.getSource();
-
-                Class<?> targetType = ((EntityValueSource) valueSource)
-                        .getMetaPropertyPath().getMetaProperty().getJavaType();
+                Class<V> targetType = valueBinding.getSource().getType();
 
                 if (List.class.isAssignableFrom(targetType)) {
                     return (V) selectedItemsStream.collect(Collectors.toList());
@@ -140,6 +151,39 @@ public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V> im
     @Override
     public V getValue() {
         return convertToModel(component.getValue());
+    }
+
+    @Override
+    public void setValue(V value) {
+        super.setValue(value);
+
+        V oldValue = internalValue;
+        internalValue = value;
+
+        if (!fieldValueEquals(value, oldValue)) {
+            ScreenContext screenContext = ComponentsHelper.getScreenContext(this);
+            screenContext.getNotifications().create(Notifications.NotificationType.TRAY).withCaption("set value").show();
+
+            ValueChangeEvent<V> event = new ValueChangeEvent<>(this, oldValue, value, false);
+            publish(ValueChangeEvent.class, event);
+        }
+    }
+
+    @Override
+    protected void componentValueChanged(Object newComponentValue, boolean userOriginated) {
+        if (userOriginated) {
+            CollectionContainer collectionContainer = null;
+            if (optionsBinding.getSource() instanceof ContainerOptions) {
+                collectionContainer = ((ContainerOptions) optionsBinding.getSource()).getContainer();
+                collectionContainer.mute();
+            }
+
+            super.componentValueChanged(newComponentValue, userOriginated);
+
+            if (collectionContainer != null) {
+                collectionContainer.unmute(CollectionContainer.UnmuteEventsMode.FIRE_REFRESH_EVENT);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
