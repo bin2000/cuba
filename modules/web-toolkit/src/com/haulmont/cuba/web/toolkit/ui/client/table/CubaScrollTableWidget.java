@@ -905,6 +905,7 @@ public class CubaScrollTableWidget extends VScrollTable implements TableWidget {
     protected void reOrderColumn(String columnKey, int newIndex) {
         super.reOrderColumn(columnKey, newIndex);
 
+        // CAUTION we use immediate update aggregation row
         if (_delegate.aggregationRow != null) {
             client.updateVariable(paintableId, "updateAggregationRow", true, true);
         }

@@ -290,7 +290,10 @@ public class CubaTable extends com.vaadin.ui.Table implements TableContainer, Cu
         }
 
         if (variables.containsKey("updateAggregationRow")) {
-            markAsDirty();
+            Boolean updateAggregationRow = (Boolean) variables.get("updateAggregationRow");
+            if (updateAggregationRow) {
+                markAsDirty();
+            }
         }
     }
 
