@@ -22,8 +22,6 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.haulmont.cuba.core.entity.Entity;
 import com.haulmont.cuba.core.global.MetadataTools;
-import com.haulmont.cuba.gui.ComponentsHelper;
-import com.haulmont.cuba.gui.Notifications;
 import com.haulmont.cuba.gui.components.CaptionMode;
 import com.haulmont.cuba.gui.components.OptionsList;
 import com.haulmont.cuba.gui.components.data.meta.EntityOptions;
@@ -34,7 +32,6 @@ import com.haulmont.cuba.gui.components.data.options.MapOptions;
 import com.haulmont.cuba.gui.components.data.options.ContainerOptions;
 import com.haulmont.cuba.gui.components.data.options.OptionsBinder;
 import com.haulmont.cuba.gui.model.CollectionContainer;
-import com.haulmont.cuba.gui.screen.ScreenContext;
 import com.haulmont.cuba.web.widgets.CubaListSelect;
 import com.vaadin.v7.data.util.IndexedContainer;
 import org.springframework.beans.factory.InitializingBean;
@@ -161,9 +158,6 @@ public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V>
         internalValue = value;
 
         if (!fieldValueEquals(value, oldValue)) {
-            ScreenContext screenContext = ComponentsHelper.getScreenContext(this);
-            screenContext.getNotifications().create(Notifications.NotificationType.TRAY).withCaption("set value").show();
-
             ValueChangeEvent<V> event = new ValueChangeEvent<>(this, oldValue, value, false);
             publish(ValueChangeEvent.class, event);
         }
@@ -254,7 +248,7 @@ public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V>
     public void setOptionCaptionProvider(Function<? super I, String> optionCaptionProvider) {
         this.optionCaptionProvider = optionCaptionProvider;
 
-        component.setItemCaptionGenerator(o -> generateItemCaption((I) o));
+        component.markAsDirty();
     }
 
     @Override
