@@ -71,7 +71,7 @@ public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V>
 
     protected void initComponent(CubaListSelect component) {
         component.setContainerDataSource(new IndexedContainer());
-        component.setItemCaptionGenerator(o -> generateItemCaption((I) o));
+        component.setItemCaptionGenerator(this::generateItemCaption);
 
         attachListener(component);
     }
@@ -85,7 +85,10 @@ public class WebOptionsList<V, I> extends WebAbstractField<CubaListSelect, V>
         return metadataTools.format(item);
     }
 
-    protected String generateItemCaption(I item) {
+    protected String generateItemCaption(Object objectItem) {
+        //noinspection unchecked
+        I item = (I) objectItem;
+
         if (item == null) {
             return null;
         }
