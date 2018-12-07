@@ -40,6 +40,10 @@ public interface FileMultiUploadField extends UploadField {
      */
     void clearUploads();
 
+    /**
+     * @see QueueUploadCompleteEvent
+     * @deprecated use {@link #addQueueUploadCompleteListener(Consumer)}
+     */
     @Deprecated
     @FunctionalInterface
     interface QueueUploadCompleteListener {
