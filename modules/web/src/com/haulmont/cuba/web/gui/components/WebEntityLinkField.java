@@ -21,32 +21,34 @@ import com.haulmont.chile.core.datatypes.Datatype;
 import com.haulmont.chile.core.datatypes.Datatypes;
 import com.haulmont.chile.core.model.Instance;
 import com.haulmont.chile.core.model.MetaClass;
+import com.haulmont.chile.core.model.MetaProperty;
+import com.haulmont.chile.core.model.MetaPropertyPath;
 import com.haulmont.cuba.core.entity.Entity;
 import com.haulmont.cuba.core.entity.SoftDelete;
-import com.haulmont.cuba.core.global.AppBeans;
-import com.haulmont.cuba.core.global.DataManager;
-import com.haulmont.cuba.core.global.Messages;
-import com.haulmont.cuba.core.global.View;
+import com.haulmont.cuba.core.global.*;
 import com.haulmont.cuba.gui.ComponentsHelper;
 import com.haulmont.cuba.gui.WindowManager;
 import com.haulmont.cuba.gui.components.*;
+import com.haulmont.cuba.gui.components.data.ValueSource;
+import com.haulmont.cuba.gui.components.data.meta.EntityValueSource;
 import com.haulmont.cuba.gui.config.WindowConfig;
 import com.haulmont.cuba.gui.data.DataSupplier;
 import com.haulmont.cuba.gui.data.Datasource;
 import com.haulmont.cuba.gui.data.impl.DatasourceImplementation;
 import com.haulmont.cuba.gui.screen.compatibility.LegacyFrame;
 import com.haulmont.cuba.web.widgets.CubaButtonField;
-import com.vaadin.v7.data.util.converter.Converter;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.InitializingBean;
 
 import javax.annotation.Nullable;
+import javax.inject.Inject;
 import java.util.Collections;
-import java.util.Locale;
 import java.util.Map;
 
 import static com.haulmont.cuba.gui.WindowManager.OpenType;
 
-public class WebEntityLinkField<V> extends WebAbstractField<CubaButtonField, V> implements EntityLinkField<V> {
+public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>, V, V>
+        implements EntityLinkField<V>, InitializingBean {
 
     protected static final String EMPTY_VALUE_STYLENAME = "empty-value";
 
@@ -63,8 +65,29 @@ public class WebEntityLinkField<V> extends WebAbstractField<CubaButtonField, V> 
     protected Datasource.ItemChangeListener itemChangeListener;
     protected Datasource.ItemPropertyChangeListener itemPropertyChangeListener;
 
+    /* Beans */
+    protected MetadataTools metadataTools;
+
     public WebEntityLinkField() {
-        component = new CubaButtonField();
+        component = createComponent();
+        attachValueChangeListener(component);
+    }
+
+    @Inject
+    public void setMetadataTools(MetadataTools metadataTools) {
+        this.metadataTools = metadataTools;
+    }
+
+    protected CubaButtonField<V> createComponent() {
+        return new CubaButtonField<>();
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        initComponent();
+    }
+
+    protected void initComponent() {
         component.addClickListener(event -> {
             if (clickHandler != null) {
                 clickHandler.onClick(WebEntityLinkField.this);
@@ -72,62 +95,45 @@ public class WebEntityLinkField<V> extends WebAbstractField<CubaButtonField, V> 
                 openEntityEditor();
             }
         });
-        component.setInvalidCommitted(true);
-        component.setCaptionFormatter(new Converter() {
-            @Override
-            public Object convertToModel(Object value, Class targetType, Locale locale) throws ConversionException {
-                return null;
+        component.setCaptionFormatter((value, locale) -> {
+            if (value == null) {
+                return "";
             }
 
-            @Override
-            public Object convertToPresentation(Object value, Class targetType, Locale locale)
-                    throws ConversionException {
-                if (value == null) {
-                    return "";
-                }
-
-                if (value instanceof Instance) {
-                    return ((Instance) value).getInstanceName();
-                }
-
-                Datatype datatype = Datatypes.getNN(value.getClass());
-
-                if (locale != null) {
-                    return datatype.format(value, locale);
-                }
-
-                return datatype.format(value);
+            if (value instanceof Instance) {
+                return metadataTools.getInstanceName((Instance) value);
             }
 
-            @Override
-            public Class getModelType() {
-                return Object.class;
+            Datatype datatype = Datatypes.getNN(value.getClass());
+
+            if (locale != null) {
+                return datatype.format(value, locale);
             }
 
-            @Override
-            public Class getPresentationType() {
-                return String.class;
-            }
+            return datatype.format(value);
         });
-
-        attachListener(component);
     }
 
     @Override
     public MetaClass getMetaClass() {
-        final Datasource ds = getDatasource();
-        if (ds != null && getMetaProperty().getRange().isClass()) {
-            return getMetaProperty().getRange().asClass();
-        } else {
-            return metaClass;
+        ValueSource<V> valueSource = getValueSource();
+
+        if (valueSource instanceof EntityValueSource) {
+            MetaPropertyPath metaPropertyPath = ((EntityValueSource) valueSource).getMetaPropertyPath();
+            MetaProperty metaProperty = metaPropertyPath.getMetaProperty();
+            if (metaProperty.getRange().isClass()) {
+                return metaProperty.getRange().asClass();
+            }
         }
+        return metaClass;
     }
 
     @Override
     public void setMetaClass(MetaClass metaClass) {
-        final Datasource ds = getDatasource();
-        if (ds != null) {
-            throw new IllegalStateException("Datasource is not null");
+        ValueSource<V> valueSource = getValueSource();
+
+        if (valueSource instanceof EntityValueSource) {
+            throw new IllegalStateException("ValueSource is not null");
         }
         this.metaClass = metaClass;
     }
@@ -143,12 +149,12 @@ public class WebEntityLinkField<V> extends WebAbstractField<CubaButtonField, V> 
     }
 
     @Override
-    public void setValue(Object value) {
+    public void setValue(V value) {
         if (value != null) {
-            if (getDatasource() == null && metaClass == null) {
-                throw new IllegalStateException("Datasource or metaclass must be set for field");
+            if (getValueSource() == null && metaClass == null) {
+                throw new IllegalStateException("ValueSource or metaclass must be set for field");
             }
-            
+
             component.removeStyleName(EMPTY_VALUE_STYLENAME);
 
             MetaClass fieldMetaClass = getMetaClass();
@@ -228,7 +234,7 @@ public class WebEntityLinkField<V> extends WebAbstractField<CubaButtonField, V> 
     }
 
     protected void openEntityEditor() {
-        Object value = getValue();
+        V value = getValue();
 
         Entity entity;
         if (value instanceof Entity) {
@@ -308,7 +314,7 @@ public class WebEntityLinkField<V> extends WebAbstractField<CubaButtonField, V> 
 
                 boolean modified = getDatasource().isModified();
                 setValue(null);
-                setValue(item);
+                setValue((V) item);
                 ((DatasourceImplementation) getDatasource()).setModified(modified);
 
                 // restore modified for owner datasource
@@ -322,7 +328,7 @@ public class WebEntityLinkField<V> extends WebAbstractField<CubaButtonField, V> 
                 }
             } else {
                 setValue(null);
-                setValue(item);
+                setValue((V) item);
             }
         } else if (owner != null && owner.getDatasource() != null) {
             //noinspection unchecked
