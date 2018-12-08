@@ -35,6 +35,7 @@ import com.haulmont.cuba.gui.config.WindowConfig;
 import com.haulmont.cuba.gui.data.DataSupplier;
 import com.haulmont.cuba.gui.data.Datasource;
 import com.haulmont.cuba.gui.data.impl.DatasourceImplementation;
+import com.haulmont.cuba.gui.screen.*;
 import com.haulmont.cuba.gui.screen.compatibility.LegacyFrame;
 import com.haulmont.cuba.web.widgets.CubaButtonField;
 import org.apache.commons.lang3.StringUtils;
@@ -55,7 +56,7 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     protected EntityLinkClickHandler clickHandler;
 
     protected String screen;
-    protected OpenType screenOpenType = OpenType.THIS_TAB;
+    protected OpenMode screenOpenMode = OpenMode.THIS_TAB;
     protected ScreenCloseListener screenCloseListener;
     protected Map<String, Object> screenParams;
 
@@ -204,12 +205,22 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
 
     @Override
     public OpenType getScreenOpenType() {
-        return screenOpenType;
+        return convertOpenModeToOpenType(screenOpenMode);
     }
 
     @Override
     public void setScreenOpenType(OpenType screenOpenType) {
-        this.screenOpenType = screenOpenType;
+        this.screenOpenMode = convertOpenTypeToOpenMode(screenOpenType);
+    }
+
+    @Override
+    public OpenMode getOpenMode() {
+        return screenOpenMode;
+    }
+
+    @Override
+    public void setOpenMode(OpenMode openMode) {
+        this.screenOpenMode = openMode;
     }
 
     @Override
@@ -282,7 +293,7 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
         AbstractEditor editor = (AbstractEditor) wm.openEditor(
                 windowConfig.getWindowInfo(windowAlias),
                 entity,
-                screenOpenType,
+                convertOpenModeToOpenType(screenOpenMode),
                 screenParams != null ? screenParams : Collections.emptyMap()
         );
         editor.addCloseListener(actionId -> {
@@ -354,5 +365,32 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     @Override
     public void setTabIndex(int tabIndex) {
         component.setTabIndex(tabIndex);
+    }
+
+    protected OpenType convertOpenModeToOpenType(OpenMode openMode) {
+        switch (openMode) {
+            case DIALOG:
+                return OpenType.DIALOG;
+            case NEW_TAB:
+                return OpenType.NEW_TAB;
+            case NEW_WINDOW:
+                return OpenType.NEW_WINDOW;
+            case THIS_TAB:
+            case ROOT:
+            default:
+                return OpenType.THIS_TAB;
+        }
+    }
+
+    protected OpenMode convertOpenTypeToOpenMode(OpenType openType) {
+        if (openType == OpenType.DIALOG) {
+            return OpenMode.DIALOG;
+        } else if (openType == OpenType.NEW_TAB) {
+            return OpenMode.NEW_TAB;
+        } else if (openType == OpenType.NEW_WINDOW) {
+            return OpenMode.NEW_WINDOW;
+        } else {
+            return OpenMode.THIS_TAB;
+        }
     }
 }

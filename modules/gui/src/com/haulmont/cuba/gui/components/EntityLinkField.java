@@ -19,6 +19,7 @@ package com.haulmont.cuba.gui.components;
 
 import com.haulmont.chile.core.model.MetaClass;
 import com.haulmont.cuba.gui.WindowManager;
+import com.haulmont.cuba.gui.screen.OpenMode;
 
 import javax.annotation.Nullable;
 import java.util.Map;
@@ -31,8 +32,22 @@ public interface EntityLinkField<V> extends Field<V>, Component.Focusable {
     String getScreen();
     void setScreen(@Nullable String screen);
 
+    /**
+     * @deprecated use {@link #getOpenMode()}
+     * @return open type
+     */
+    @Deprecated
     WindowManager.OpenType getScreenOpenType();
+
+    /**
+     * @deprecated use {@link #setOpenMode(OpenMode)}
+     * @param openType open type
+     */
+    @Deprecated
     void setScreenOpenType(WindowManager.OpenType openType);
+
+    OpenMode getOpenMode();
+    void setOpenMode(OpenMode openMode);
 
     @Nullable
     Map<String, Object> getScreenParams();
