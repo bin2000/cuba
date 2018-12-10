@@ -27,14 +27,19 @@ import com.haulmont.cuba.core.entity.Entity;
 import com.haulmont.cuba.core.entity.SoftDelete;
 import com.haulmont.cuba.core.global.*;
 import com.haulmont.cuba.gui.ComponentsHelper;
-import com.haulmont.cuba.gui.WindowManager;
+import com.haulmont.cuba.gui.Notifications;
+import com.haulmont.cuba.gui.ScreenBuilders;
 import com.haulmont.cuba.gui.components.*;
 import com.haulmont.cuba.gui.components.data.ValueSource;
+import com.haulmont.cuba.gui.components.data.meta.ContainerDataUnit;
 import com.haulmont.cuba.gui.components.data.meta.EntityValueSource;
+import com.haulmont.cuba.gui.components.data.value.ContainerValueSource;
 import com.haulmont.cuba.gui.config.WindowConfig;
+import com.haulmont.cuba.gui.data.CollectionDatasource;
 import com.haulmont.cuba.gui.data.DataSupplier;
 import com.haulmont.cuba.gui.data.Datasource;
 import com.haulmont.cuba.gui.data.impl.DatasourceImplementation;
+import com.haulmont.cuba.gui.model.CollectionContainer;
 import com.haulmont.cuba.gui.screen.*;
 import com.haulmont.cuba.gui.screen.compatibility.LegacyFrame;
 import com.haulmont.cuba.web.widgets.CubaButtonField;
@@ -43,7 +48,7 @@ import org.springframework.beans.factory.InitializingBean;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.haulmont.cuba.gui.WindowManager.OpenType;
@@ -68,6 +73,7 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
 
     /* Beans */
     protected MetadataTools metadataTools;
+    protected ScreenBuilders screenBuilders;
 
     public WebEntityLinkField() {
         component = createComponent();
@@ -77,6 +83,11 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     @Inject
     public void setMetadataTools(MetadataTools metadataTools) {
         this.metadataTools = metadataTools;
+    }
+
+    @Inject
+    public void setSceenBuilders(ScreenBuilders screenBuilders) {
+        this.screenBuilders = screenBuilders;
     }
 
     protected CubaButtonField<V> createComponent() {
@@ -117,14 +128,9 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
 
     @Override
     public MetaClass getMetaClass() {
-        ValueSource<V> valueSource = getValueSource();
-
-        if (valueSource instanceof EntityValueSource) {
-            MetaPropertyPath metaPropertyPath = ((EntityValueSource) valueSource).getMetaPropertyPath();
-            MetaProperty metaProperty = metaPropertyPath.getMetaProperty();
-            if (metaProperty.getRange().isClass()) {
-                return metaProperty.getRange().asClass();
-            }
+        MetaProperty metaProperty = getMetaPropertyForEditedValue();
+        if (metaProperty != null && metaProperty.getRange().isClass()) {
+            return metaProperty.getRange().asClass();
         }
         return metaClass;
     }
@@ -151,6 +157,8 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
 
     @Override
     public void setValue(V value) {
+        super.setValue(value);
+
         if (value != null) {
             if (getValueSource() == null && metaClass == null) {
                 throw new IllegalStateException("ValueSource or metaclass must be set for field");
@@ -174,8 +182,6 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
         } else {
             component.addStyleName("empty-value");
         }
-
-        component.setValue(value);
     }
 
     @Override
@@ -247,30 +253,28 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     protected void openEntityEditor() {
         V value = getValue();
 
-        Entity entity;
+        Entity entity = null;
         if (value instanceof Entity) {
             entity = (Entity) value;
-        } else {
-            entity = getDatasource().getItem();
+        } else if (getValueSource() instanceof EntityValueSource) {
+            entity = ((EntityValueSource) getValueSource()).getItem();
         }
 
         if (entity == null) {
             return;
         }
 
-        WindowManager wm;
         Window window = ComponentsHelper.getWindow(this);
         if (window == null) {
             throw new IllegalStateException("Please specify Frame for EntityLinkField");
-        } else {
-            wm = window.getWindowManager();
         }
 
+        ScreenContext context = ComponentsHelper.getScreenContext(this);
         if (entity instanceof SoftDelete && ((SoftDelete) entity).isDeleted()) {
             Messages messages = AppBeans.get(Messages.NAME);
-            wm.showNotification(
-                    messages.getMainMessage("OpenAction.objectIsDeleted"),
-                    Frame.NotificationType.HUMANIZED);
+            context.getNotifications().create(Notifications.NotificationType.HUMANIZED)
+                    .withCaption(messages.getMainMessage("OpenAction.objectIsDeleted"))
+                    .show();
             return;
         }
 
@@ -290,65 +294,147 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
             windowAlias = windowConfig.getEditorScreenId(entity.getMetaClass());
         }
 
-        AbstractEditor editor = (AbstractEditor) wm.openEditor(
-                windowConfig.getWindowInfo(windowAlias),
-                entity,
-                convertOpenModeToOpenType(screenOpenMode),
-                screenParams != null ? screenParams : Collections.emptyMap()
-        );
-        editor.addCloseListener(actionId -> {
+        Screen screenEditor = screenBuilders.editor(entity.getMetaClass().getJavaClass(), window.getFrameOwner())
+                .withScreenId(windowAlias)
+                .editEntity(entity)
+                .withOpenMode(screenOpenMode)
+                .withOptions(new MapScreenOptions(screenParams != null ? screenParams : new HashMap<>()))
+                .build();
+
+        screenEditor.addAfterCloseListener(event -> {
             // move focus to component
             component.focus();
 
-            if (Window.COMMIT_ACTION_ID.equals(actionId)) {
-                Entity item = editor.getItem();
-                afterCommitOpenedEntity(item);
+            String closeActionId = null;
+            CloseAction closeAction = event.getCloseAction();
+            if (closeAction instanceof StandardCloseAction) {
+                closeActionId = ((StandardCloseAction) closeAction).getActionId();
+            }
+
+            if (StringUtils.isNotEmpty(closeActionId)
+                    && Window.COMMIT_ACTION_ID.equals(closeActionId)) {
+                Entity item = null;
+                Screen screenSource = event.getSource();
+                if (screenSource instanceof EditorScreen) {
+                    item = ((EditorScreen) screenSource).getEditedEntity();
+                }
+
+                if (item != null) {
+                    afterCommitOpenedEntity(item);
+                }
             }
 
             if (screenCloseListener != null) {
-                screenCloseListener.windowClosed(editor, actionId);
+//                screenCloseListener.windowClosed(screenEditor, closeActionId);
             }
         });
+        screenEditor.show();
     }
 
     protected void afterCommitOpenedEntity(Entity item) {
-        if (getMetaProperty().getRange().isClass()) {
-            if (getDatasource() != null) {
+        MetaProperty metaProperty = getMetaPropertyForEditedValue();
+        if (metaProperty != null && metaProperty.getRange().isClass()) {
+            if (getValueSource() != null) {
                 boolean ownerDsModified = false;
                 boolean nonModifiedInTable = false;
-                if (owner != null && owner.getDatasource() != null) {
-                    DatasourceImplementation ownerDs = ((DatasourceImplementation) owner.getDatasource());
-                    nonModifiedInTable = !ownerDs.getItemsToUpdate().contains(getDatasource().getItem());
 
+                DatasourceImplementation ownerDs = null;
+                CollectionContainer ownerCollectionCont = null;
+
+                if (getCollectionDatasourceFromOwner() != null) {
+                    ownerDs = ((DatasourceImplementation) getCollectionDatasourceFromOwner());
+                    nonModifiedInTable = !ownerDs.getItemsToUpdate().contains(
+                            ((EntityValueSource) getValueSource()).getItem());
                     ownerDsModified = ownerDs.isModified();
+                } else if (getCollectionContainerFromOwner() != null) {
+                    ownerCollectionCont = ((ContainerDataUnit) owner.getItems()).getContainer();
+                    ownerCollectionCont.mute();
                 }
 
-                boolean modified = getDatasource().isModified();
-                setValue(null);
-                setValue((V) item);
-                ((DatasourceImplementation) getDatasource()).setModified(modified);
+                //noinspection unchecked
+                silentSetValue((V) item);
 
                 // restore modified for owner datasource
                 // remove from items to update if it was not modified before setValue
-                if (owner != null && owner.getDatasource() != null) {
-                    DatasourceImplementation ownerDs = ((DatasourceImplementation) owner.getDatasource());
+                if (ownerDs != null) {
                     if (nonModifiedInTable) {
                         ownerDs.getItemsToUpdate().remove(getDatasource().getItem());
                     }
                     ownerDs.setModified(ownerDsModified);
+                } else if (ownerCollectionCont != null) {
+                    ownerCollectionCont.unmute();
                 }
             } else {
-                setValue(null);
+                //noinspection unchecked
                 setValue((V) item);
             }
-        } else if (owner != null && owner.getDatasource() != null) {
-            //noinspection unchecked
-            owner.getDatasource().updateItem(item);
+            // if we edit property with non Entity type and set ListComponent owner
+        } else if (owner != null) {
+            if (getCollectionDatasourceFromOwner() != null) {
+                //noinspection unchecked
+                getCollectionDatasourceFromOwner().updateItem(item);
+            } else if (getCollectionContainerFromOwner() != null) {
+                //do not listen changes in collection
+                getCollectionContainerFromOwner().mute();
+
+                //noinspection unchecked
+                getCollectionContainerFromOwner().replaceItem(item);
+                silentSetValue(item.getValueEx(getMetaPropertyPath()));
+
+                //listen changes
+                getCollectionContainerFromOwner().unmute();
+            }
 
             if (owner instanceof Focusable) {
                 // focus owner
                 ((Focusable) owner).focus();
             }
+            // if we edit property with non Entity type
+        } else {
+            //noinspection unchecked
+            silentSetValue((V) item);
+        }
+    }
+
+    protected CollectionContainer getCollectionContainerFromOwner() {
+        if (owner != null && owner.getItems() != null) {
+            if (owner.getItems() instanceof ContainerDataUnit) {
+                return ((ContainerDataUnit) owner.getItems()).getContainer();
+            }
+        }
+        return null;
+    }
+
+    protected CollectionDatasource getCollectionDatasourceFromOwner() {
+        if (owner != null && owner.getItems() != null) {
+            return owner.getDatasource();
+        }
+        return null;
+    }
+
+    protected MetaProperty getMetaPropertyForEditedValue() {
+        ValueSource<V> valueSource = getValueSource();
+        if (valueSource instanceof EntityValueSource) {
+            MetaPropertyPath metaPropertyPath = ((EntityValueSource) valueSource).getMetaPropertyPath();
+            return metaPropertyPath.getMetaProperty();
+        }
+        return null;
+    }
+
+    protected void silentSetValue(V item) {
+        boolean modified = false;
+        if (getDatasource() != null) {
+            modified = getDatasource().isModified();
+        } else {
+            ((ContainerValueSource) getValueSource()).getContainer().mute();
+        }
+
+        setValue(item);
+
+        if (getDatasource() != null) {
+            ((DatasourceImplementation) getDatasource()).setModified(modified);
+        } else {
+            ((ContainerValueSource) getValueSource()).getContainer().unmute();
         }
     }
 

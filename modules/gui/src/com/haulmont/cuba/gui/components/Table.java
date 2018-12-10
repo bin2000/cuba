@@ -30,6 +30,7 @@ import com.haulmont.cuba.gui.components.data.TableItems;
 import com.haulmont.cuba.gui.components.data.table.DatasourceTableItems;
 import com.haulmont.cuba.gui.data.CollectionDatasource;
 import com.haulmont.cuba.gui.data.Datasource;
+import com.haulmont.cuba.gui.model.InstanceContainer;
 import org.dom4j.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -473,13 +474,19 @@ public interface Table<E extends Entity>
      * );
      * }</pre>
      *
-     * todo document deprecation
-     *
      * @param item entity item
      * @return datasource containing the item
+     * @deprecated use {@link #getInstanceContainer(Entity)}
      */
     @Deprecated
     Datasource getItemDatasource(Entity item);
+
+    /**
+     * //todo JavaDoc
+     * @param item
+     * @return
+     */
+    InstanceContainer<E> getInstanceContainer(E item);
 
     /**
      * Allows rendering of an arbitrary {@link Component} inside a table cell.
