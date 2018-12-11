@@ -55,6 +55,7 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
      *
      * @return FileDescriptor instance or null
      */
+    @Nullable
     FileDescriptor getFileDescriptor();
 
     /**
@@ -75,7 +76,7 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
     }
 
     /**
-     * Adds file a upload succeed listener. It is invoked when the uploads are successfully finished.
+     * Adds file upload succeed listener. It is invoked when the uploads are successfully finished.
      *
      * @param listener a listener to add
      * @return subscription
@@ -170,7 +171,7 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
     /**
      * Describes before value clear event. Event is invoked before value clearing when user use clear button.
      */
-    class BeforeValueClearEvent extends AbstractFileUploadFieldEvent {
+    class BeforeValueClearEvent extends EventObject {
         private FileUploadField target;
         private boolean clearPrevented = false;
 
@@ -188,11 +189,16 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
         }
 
         /**
-         * @deprecated use {@link #getSource()}
+         * @deprecated Use {@link #getSource()} instead.
          */
         @Deprecated
         public FileUploadField getTarget() {
             return target;
+        }
+
+        @Override
+        public FileUploadField getSource() {
+            return (FileUploadField) super.getSource();
         }
     }
 
@@ -217,7 +223,7 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
     /**
      * Describes after value clear event.
      */
-    class AfterValueClearEvent extends AbstractFileUploadFieldEvent {
+    class AfterValueClearEvent extends EventObject {
         private FileUploadField target;
         private boolean valueCleared;
 
@@ -228,7 +234,7 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
         }
 
         /**
-         * @deprecated use {@link #getSource()}
+         * @deprecated Use {@link #getSource()} instead.
          */
         public FileUploadField getTarget() {
             return target;
@@ -236,6 +242,11 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
 
         public boolean isValueCleared() {
             return valueCleared;
+        }
+
+        @Override
+        public FileUploadField getSource() {
+            return (FileUploadField) super.getSource();
         }
     }
 
@@ -288,20 +299,5 @@ public interface FileUploadField extends UploadField, Field<FileDescriptor>, Com
         }
 
         InputStream provide();
-    }
-
-    /**
-     * Base class for FileUploadField events.
-     */
-    abstract class AbstractFileUploadFieldEvent extends EventObject {
-
-        public AbstractFileUploadFieldEvent(FileUploadField source) {
-            super(source);
-        }
-
-        @Override
-        public FileUploadField getSource() {
-            return (FileUploadField) super.getSource();
-        }
     }
 }

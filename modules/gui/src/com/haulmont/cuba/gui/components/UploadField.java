@@ -118,7 +118,7 @@ public interface UploadField extends Component, Component.HasCaption, Component.
     void removeFileUploadFinishListener(Consumer<FileUploadFinishEvent> listener);
 
     /**
-     * Adds a file upload error listener. It is invoked when the uploads are finished, but unsuccessful.
+     * Adds file upload error listener. It is invoked when the uploads are finished, but unsuccessful.
      *
      * @param listener a listener to add
      * @return subscription

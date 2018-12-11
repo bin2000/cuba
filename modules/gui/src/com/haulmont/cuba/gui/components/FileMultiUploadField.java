@@ -42,7 +42,7 @@ public interface FileMultiUploadField extends UploadField {
 
     /**
      * @see QueueUploadCompleteEvent
-     * @deprecated use {@link #addQueueUploadCompleteListener(Consumer)}
+     * @deprecated Use {@link #addQueueUploadCompleteListener(Consumer)} instead.
      */
     @Deprecated
     @FunctionalInterface
