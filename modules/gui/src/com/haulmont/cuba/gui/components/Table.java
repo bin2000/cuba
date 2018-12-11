@@ -476,15 +476,28 @@ public interface Table<E extends Entity>
      *
      * @param item entity item
      * @return datasource containing the item
-     * @deprecated use {@link #getInstanceContainer(Entity)}
+     * @deprecated Use {@link #getInstanceContainer(Entity)} instead.
      */
     @Deprecated
     Datasource getItemDatasource(Entity item);
 
     /**
-     * //todo JavaDoc
-     * @param item
-     * @return
+     * This method returns the InstanceContainer which contains the provided item. It can be used in data-aware components,
+     * created in generated columns. <br>
+     *
+     * <b>Do not save to final variables, just get it from table when you need.</b>
+     *
+     * <pre>{@code
+     * carsTable.addGeneratedColumn("name", car -> {
+     *     TextField<String> textField = uiComponents.create(TextField.NAME);
+     *     textField.setValueSource(new ContainerValueSource<>(carsTable.getInstanceContainer(car),"name"));
+     *     textField.setValue(car.getName());
+     *     return textField;
+     * });
+     * }</pre>
+     *
+     * @param item entity item
+     * @return InstanceContainer containing the item
      */
     InstanceContainer<E> getInstanceContainer(E item);
 

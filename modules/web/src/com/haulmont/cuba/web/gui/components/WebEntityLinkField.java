@@ -17,6 +17,7 @@
 
 package com.haulmont.cuba.web.gui.components;
 
+import com.haulmont.bali.events.Subscription;
 import com.haulmont.chile.core.datatypes.Datatype;
 import com.haulmont.chile.core.datatypes.Datatypes;
 import com.haulmont.chile.core.model.Instance;
@@ -37,7 +38,6 @@ import com.haulmont.cuba.gui.components.data.value.ContainerValueSource;
 import com.haulmont.cuba.gui.config.WindowConfig;
 import com.haulmont.cuba.gui.data.CollectionDatasource;
 import com.haulmont.cuba.gui.data.DataSupplier;
-import com.haulmont.cuba.gui.data.Datasource;
 import com.haulmont.cuba.gui.data.impl.DatasourceImplementation;
 import com.haulmont.cuba.gui.model.CollectionContainer;
 import com.haulmont.cuba.gui.screen.*;
@@ -50,6 +50,7 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static com.haulmont.cuba.gui.WindowManager.OpenType;
 
@@ -68,8 +69,7 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     protected MetaClass metaClass;
     protected ListComponent owner;
 
-    protected Datasource.ItemChangeListener itemChangeListener;
-    protected Datasource.ItemPropertyChangeListener itemPropertyChangeListener;
+    protected Subscription subscription;
 
     /* Beans */
     protected MetadataTools metadataTools;
@@ -248,6 +248,25 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     @Override
     public void setScreenCloseListener(@Nullable ScreenCloseListener closeListener) {
         this.screenCloseListener = closeListener;
+
+        if (subscription != null) {
+            subscription.remove();
+        }
+
+        if (screenCloseListener != null) {
+            subscription = addEditorCloseListener(event -> {
+                if (event.getEditorScreen() instanceof AbstractEditor) {
+                    screenCloseListener.windowClosed((Window) event.getEditorScreen(), event.getActionId());
+                } else {
+                    screenCloseListener.windowClosed(null, event.getActionId());
+                }
+            });
+        }
+    }
+
+    @Override
+    public Subscription addEditorCloseListener(Consumer<EditorCloseEvent> editorCloseListener) {
+        return getEventHub().subscribe(EditorCloseEvent.class, editorCloseListener);
     }
 
     protected void openEntityEditor() {
@@ -311,10 +330,11 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
                 closeActionId = ((StandardCloseAction) closeAction).getActionId();
             }
 
+            Screen screenSource = null;
             if (StringUtils.isNotEmpty(closeActionId)
                     && Window.COMMIT_ACTION_ID.equals(closeActionId)) {
                 Entity item = null;
-                Screen screenSource = event.getSource();
+                screenSource = event.getSource();
                 if (screenSource instanceof EditorScreen) {
                     item = ((EditorScreen) screenSource).getEditedEntity();
                 }
@@ -324,11 +344,15 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
                 }
             }
 
-            if (screenCloseListener != null) {
-//                screenCloseListener.windowClosed(screenEditor, closeActionId);
-            }
+            fireEditorCloseEvent(screenSource == null ?
+                    null : (EditorScreen) screenSource, closeActionId);
         });
         screenEditor.show();
+    }
+
+    protected void fireEditorCloseEvent(EditorScreen editorScreen, String closeActionId) {
+        publish(EditorCloseEvent.class,
+                new EditorCloseEvent<>(this, editorScreen, closeActionId));
     }
 
     protected void afterCommitOpenedEntity(Entity item) {
@@ -352,7 +376,7 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
                 }
 
                 //noinspection unchecked
-                silentSetValue((V) item);
+                setValueSilently((V) item);
 
                 // restore modified for owner datasource
                 // remove from items to update if it was not modified before setValue
@@ -379,7 +403,7 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
 
                 //noinspection unchecked
                 getCollectionContainerFromOwner().replaceItem(item);
-                silentSetValue(item.getValueEx(getMetaPropertyPath()));
+                setValueSilently(item.getValueEx(getMetaPropertyPath()));
 
                 //listen changes
                 getCollectionContainerFromOwner().unmute();
@@ -392,7 +416,7 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
             // if we edit property with non Entity type
         } else {
             //noinspection unchecked
-            silentSetValue((V) item);
+            setValueSilently((V) item);
         }
     }
 
@@ -421,7 +445,13 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
         return null;
     }
 
-    protected void silentSetValue(V item) {
+    /**
+     * Sets value to the component without triggering change listeners for ContainerValueSource and without changing
+     * a modify state of Datasource.
+     *
+     * @param item value
+     */
+    protected void setValueSilently(V item) {
         boolean modified = false;
         if (getDatasource() != null) {
             modified = getDatasource().isModified();
