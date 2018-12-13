@@ -63,13 +63,14 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
 
     protected String screen;
     protected OpenMode screenOpenMode = OpenMode.THIS_TAB;
+    protected OpenType screenOpenType = OpenType.THIS_TAB;
     protected ScreenCloseListener screenCloseListener;
     protected Map<String, Object> screenParams;
 
     protected MetaClass metaClass;
     protected ListComponent owner;
 
-    protected Subscription subscription;
+    protected Subscription closeListenerSubscription;
 
     /* Beans */
     protected MetadataTools metadataTools;
@@ -211,12 +212,13 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
 
     @Override
     public OpenType getScreenOpenType() {
-        return convertOpenModeToOpenType(screenOpenMode);
+        return screenOpenType;
     }
 
     @Override
     public void setScreenOpenType(OpenType screenOpenType) {
-        this.screenOpenMode = convertOpenTypeToOpenMode(screenOpenType);
+        this.screenOpenType = screenOpenType;
+        this.screenOpenMode = screenOpenType.getOpenMode();
     }
 
     @Override
@@ -249,12 +251,12 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     public void setScreenCloseListener(@Nullable ScreenCloseListener closeListener) {
         this.screenCloseListener = closeListener;
 
-        if (subscription != null) {
-            subscription.remove();
+        if (closeListenerSubscription != null) {
+            closeListenerSubscription.remove();
         }
 
         if (screenCloseListener != null) {
-            subscription = addEditorCloseListener(event -> {
+            closeListenerSubscription = addEditorCloseListener(event -> {
                 if (event.getEditorScreen() instanceof AbstractEditor) {
                     screenCloseListener.windowClosed((Window) event.getEditorScreen(), event.getActionId());
                 } else {
@@ -481,32 +483,5 @@ public class WebEntityLinkField<V> extends WebV8AbstractField<CubaButtonField<V>
     @Override
     public void setTabIndex(int tabIndex) {
         component.setTabIndex(tabIndex);
-    }
-
-    protected OpenType convertOpenModeToOpenType(OpenMode openMode) {
-        switch (openMode) {
-            case DIALOG:
-                return OpenType.DIALOG;
-            case NEW_TAB:
-                return OpenType.NEW_TAB;
-            case NEW_WINDOW:
-                return OpenType.NEW_WINDOW;
-            case THIS_TAB:
-            case ROOT:
-            default:
-                return OpenType.THIS_TAB;
-        }
-    }
-
-    protected OpenMode convertOpenTypeToOpenMode(OpenType openType) {
-        if (openType == OpenType.DIALOG) {
-            return OpenMode.DIALOG;
-        } else if (openType == OpenType.NEW_TAB) {
-            return OpenMode.NEW_TAB;
-        } else if (openType == OpenType.NEW_WINDOW) {
-            return OpenMode.NEW_WINDOW;
-        } else {
-            return OpenMode.THIS_TAB;
-        }
     }
 }
