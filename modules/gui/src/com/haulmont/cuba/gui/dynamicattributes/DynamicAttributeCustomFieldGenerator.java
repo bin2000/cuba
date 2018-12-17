@@ -39,7 +39,9 @@ import java.util.List;
 
 /**
  * Field generator that creates component for editing dynamic attributes with collection type.
+ * @deprecated Use {@link DynamicAttributeListEditorGenerator} for creating ListEditor component.
  */
+@Deprecated
 public class DynamicAttributeCustomFieldGenerator implements FieldGroup.CustomFieldGenerator {
 
     private static final Logger log = LoggerFactory.getLogger(DynamicAttributeCustomFieldGenerator.class);
