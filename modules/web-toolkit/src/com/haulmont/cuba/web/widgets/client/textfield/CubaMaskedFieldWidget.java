@@ -61,6 +61,12 @@ public class CubaMaskedFieldWidget extends VTextField {
 
     protected String valueBeforeEdit;
 
+    public EnterPressListener enterPressHandler;
+
+    public interface EnterPressListener {
+        void onEnterPress();
+    }
+
     public CubaMaskedFieldWidget() {
         setStylePrimaryName(CLASSNAME);
         setStyleName(CLASSNAME);
@@ -659,6 +665,11 @@ public class CubaMaskedFieldWidget extends VTextField {
                     && !e.getNativeEvent().getCtrlKey()
                     && !e.getNativeEvent().getShiftKey()) {
                 valueChange(false);
+                // as we use preventDefault() default behaviour with enter press on input doesn't work
+                // so we manually send value change event
+                if (enterPressHandler != null) {
+                    enterPressHandler.onEnterPress();
+                }
             }
 
             if (e.getNativeEvent().getKeyCode() == KeyCodes.KEY_BACKSPACE
