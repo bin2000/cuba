@@ -177,7 +177,7 @@ public class DynamicAttributesGuiTools {
                             .setParameter("entityId", categoryAttribute.getDefaultValue());
                     Entity defaultEntity = dataManager.load(lc);
                     item.setValue(code, defaultEntity);
-                } else if (categoryAttribute.getIsCollection()) {
+                } else if (Boolean.TRUE.equals(categoryAttribute.getIsCollection())) {
                     List<Object> list = new ArrayList<>();
                     list.add(categoryAttribute.getDefaultValue());
                     item.setValue(code, list);

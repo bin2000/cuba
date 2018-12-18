@@ -30,7 +30,7 @@ import com.haulmont.cuba.gui.components.data.HasValueSource;
 import com.haulmont.cuba.gui.components.data.ValueSourceProvider;
 import com.haulmont.cuba.gui.components.data.meta.EntityValueSource;
 import com.haulmont.cuba.gui.components.data.value.ContainerValueSourceProvider;
-import com.haulmont.cuba.gui.dynamicattributes.DynamicAttributeListEditorGenerator;
+import com.haulmont.cuba.gui.dynamicattributes.DynamicAttributeComponentsGenerator;
 import com.haulmont.cuba.gui.dynamicattributes.DynamicAttributesGuiTools;
 import com.haulmont.cuba.gui.model.InstanceContainer;
 import com.haulmont.cuba.gui.model.ScreenData;
@@ -214,9 +214,9 @@ public class FormLoader extends AbstractComponentLoader<Form> {
                     String code = DynamicAttributesUtils.encodeAttributeCode(attribute.getCode());
 
                     Component dynamicAttrComponent;
-                    if (attribute.getIsCollection()) {
-                        dynamicAttrComponent = getListEditorGenerator()
-                                .generateListEditor(provider.getValueSource(code), attribute);
+                    if (Boolean.TRUE.equals(attribute.getIsCollection())) {
+                        dynamicAttrComponent = getDynamicAttributesComponentsGenerator()
+                                .generateComponent(provider.getValueSource(code), attribute);
                     } else {
                         ComponentGenerationContext context = new ComponentGenerationContext(metaClass, code);
                         dynamicAttrComponent = getUiComponentsGenerator().generate(context);
@@ -268,8 +268,8 @@ public class FormLoader extends AbstractComponentLoader<Form> {
         return beanLocator.get(UiComponentsGenerator.NAME);
     }
 
-    protected DynamicAttributeListEditorGenerator getListEditorGenerator() {
-        return beanLocator.get(DynamicAttributeListEditorGenerator.NAME);
+    protected DynamicAttributeComponentsGenerator getDynamicAttributesComponentsGenerator() {
+        return beanLocator.get(DynamicAttributeComponentsGenerator.NAME);
     }
 
     protected void loadCaptionPosition(Form resultComponent, Element element) {

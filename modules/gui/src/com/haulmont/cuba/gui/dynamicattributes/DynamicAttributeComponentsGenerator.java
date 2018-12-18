@@ -14,25 +14,25 @@ import com.haulmont.cuba.core.entity.CategoryAttribute;
 import com.haulmont.cuba.core.global.Metadata;
 import com.haulmont.cuba.core.global.Scripting;
 import com.haulmont.cuba.gui.UiComponents;
+import com.haulmont.cuba.gui.components.Component;
 import com.haulmont.cuba.gui.components.ListEditor;
 import com.haulmont.cuba.gui.components.data.ValueSource;
 import com.haulmont.cuba.gui.components.data.meta.EntityValueSource;
 import org.apache.commons.lang3.BooleanUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 
 /**
- * Creates {@link ListEditor} component for dynamic attributes with collection type.
+ * Creates component for editing dynamic attributes with collection type.
  */
-@Component(DynamicAttributeListEditorGenerator.NAME)
-public class DynamicAttributeListEditorGenerator {
+@org.springframework.stereotype.Component(DynamicAttributeComponentsGenerator.NAME)
+public class DynamicAttributeComponentsGenerator {
     public static final String NAME = "cuba_DynamicAttributeListEditorGenerator";
 
-    private static final Logger log = LoggerFactory.getLogger(DynamicAttributeListEditorGenerator.class);
+    private static final Logger log = LoggerFactory.getLogger(DynamicAttributeComponentsGenerator.class);
 
     /* Beans */
     protected UiComponents uiComponents;
@@ -62,7 +62,7 @@ public class DynamicAttributeListEditorGenerator {
      * @return list editor component or null
      */
     @Nullable
-    public ListEditor generateListEditor(ValueSource valueSource, String propertyId) {
+    public Component generateComponent(ValueSource valueSource, String propertyId) {
         if (valueSource instanceof EntityValueSource) {
             MetaClass metaClass = ((EntityValueSource) valueSource).getEntityMetaClass();
             MetaPropertyPath metaPropertyPath = DynamicAttributesUtils.getMetaPropertyPath(metaClass, propertyId);
@@ -70,7 +70,7 @@ public class DynamicAttributeListEditorGenerator {
                 log.error("MetaPropertyPath for dynamic attribute {} not found", propertyId);
                 return null;
             }
-            return generateListEditor(valueSource, metaPropertyPath);
+            return generateComponent(valueSource, metaPropertyPath);
         }
         return null;
     }
@@ -82,13 +82,14 @@ public class DynamicAttributeListEditorGenerator {
      * @param metaPropertyPath meta property path of dynamic attribute
      * @return list editor component or null
      */
-    public ListEditor generateListEditor(ValueSource valueSource, MetaPropertyPath metaPropertyPath) {
+    @Nullable
+    public Component generateComponent(ValueSource valueSource, MetaPropertyPath metaPropertyPath) {
         CategoryAttribute categoryAttribute = DynamicAttributesUtils.getCategoryAttribute(metaPropertyPath.getMetaProperty());
         if (categoryAttribute == null) {
             log.error("Dynamic attribute {} not found", metaPropertyPath.getMetaProperty().getName());
             return null;
         }
-        return generateListEditor(valueSource, categoryAttribute);
+        return generateComponent(valueSource, categoryAttribute);
     }
 
     /**
@@ -98,7 +99,8 @@ public class DynamicAttributeListEditorGenerator {
      * @param categoryAttribute category attribute
      * @return list editor component or null
      */
-    public ListEditor generateListEditor(ValueSource valueSource, CategoryAttribute categoryAttribute) {
+    @Nullable
+    public Component generateComponent(ValueSource valueSource, CategoryAttribute categoryAttribute) {
         ListEditor listEditor = uiComponents.create(ListEditor.NAME);
 
         listEditor.setEntityJoinClause(categoryAttribute.getJoinClause());
