@@ -209,7 +209,9 @@ public abstract class MasterDetailScreen<T extends Entity> extends StandardLooku
             if (tools.screenContainsDynamicAttributes(getEditContainer().getView(), screenId)) {
                 getEditLoader().setLoadDynamicAttributes(true);
             }
-            if (trackedEntity instanceof BaseGenericIdEntity) {
+
+            if (getEditLoader().isLoadDynamicAttributes()
+                    && trackedEntity instanceof BaseGenericIdEntity) {
                 tools.initDefaultAttributeValues((BaseGenericIdEntity) trackedEntity, trackedEntity.getMetaClass());
             }
 
