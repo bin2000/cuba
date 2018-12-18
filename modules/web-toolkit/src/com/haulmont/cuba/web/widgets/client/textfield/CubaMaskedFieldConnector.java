@@ -39,7 +39,7 @@ public class CubaMaskedFieldConnector extends TextFieldConnector {
     protected void init() {
         super.init();
 
-        getWidget().enterPressHandler = this::sendValueChange;
+        getWidget().addValueChangeHandler(event -> sendValueChange());
     }
 
     @Override

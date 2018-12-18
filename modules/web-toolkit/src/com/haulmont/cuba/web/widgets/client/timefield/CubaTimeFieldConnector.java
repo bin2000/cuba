@@ -57,4 +57,11 @@ public class CubaTimeFieldConnector extends CubaMaskedFieldConnector {
                     + widget.resolutionAsString(), true);
         }
     }
+
+    @Override
+    protected void init() {
+        super.init();
+
+        getWidget().addValueChangeHandler(fireEvent -> sendValueChange());
+    }
 }

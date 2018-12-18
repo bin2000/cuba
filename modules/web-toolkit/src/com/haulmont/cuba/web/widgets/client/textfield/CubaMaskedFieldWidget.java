@@ -20,6 +20,7 @@ package com.haulmont.cuba.web.widgets.client.textfield;
 import com.google.gwt.core.client.Scheduler;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.event.dom.client.*;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.vaadin.client.BrowserInfo;
 import com.vaadin.client.ui.VTextField;
 
@@ -60,12 +61,6 @@ public class CubaMaskedFieldWidget extends VTextField {
     protected int shiftPressPos = -1;
 
     protected String valueBeforeEdit;
-
-    public EnterPressListener enterPressHandler;
-
-    public interface EnterPressListener {
-        void onEnterPress();
-    }
 
     public CubaMaskedFieldWidget() {
         setStylePrimaryName(CLASSNAME);
@@ -189,6 +184,8 @@ public class CubaMaskedFieldWidget extends VTextField {
             if (validateText(newText)) {
                 valueBeforeEdit = newText;
                 setValue(newText);
+
+                ValueChangeEvent.fire(this, newText);
             } else {
                 setValue(valueBeforeEdit);
             }
@@ -665,11 +662,6 @@ public class CubaMaskedFieldWidget extends VTextField {
                     && !e.getNativeEvent().getCtrlKey()
                     && !e.getNativeEvent().getShiftKey()) {
                 valueChange(false);
-                // as we use preventDefault() default behaviour with enter press on input doesn't work
-                // so we manually send value change event
-                if (enterPressHandler != null) {
-                    enterPressHandler.onEnterPress();
-                }
             }
 
             if (e.getNativeEvent().getKeyCode() == KeyCodes.KEY_BACKSPACE
