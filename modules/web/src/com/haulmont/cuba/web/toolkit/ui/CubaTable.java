@@ -873,11 +873,11 @@ public class CubaTable extends com.vaadin.ui.Table implements TableContainer, Cu
         super.setHeight(height, unit);
 
         if (height < 0) {
-            if (getCacheRate() != 2) {
-                setCacheRate(2);
+            if (getCacheRate() == 2) {
+                setCacheRate(0);
             }
-            if (getPageLength() != 15) {
-                setPageLength(15);
+            if (getPageLength() == 15) {
+                setPageLength(0);
             }
         }
     }
