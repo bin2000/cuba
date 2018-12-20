@@ -16,8 +16,16 @@
  */
 package com.haulmont.cuba.gui.xml.layout.loaders;
 
+import com.google.common.base.Strings;
+import com.haulmont.cuba.gui.GuiDevelopmentException;
 import com.haulmont.cuba.gui.components.Label;
+import com.haulmont.cuba.gui.components.data.value.ContainerValueSource;
+import com.haulmont.cuba.gui.model.InstanceContainer;
+import com.haulmont.cuba.gui.model.ScreenData;
+import com.haulmont.cuba.gui.screen.FrameOwner;
+import com.haulmont.cuba.gui.screen.UiControllerUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.dom4j.Element;
 
 public class LabelLoader extends AbstractDatasourceComponentLoader<Label> {
     @Override
@@ -31,7 +39,10 @@ public class LabelLoader extends AbstractDatasourceComponentLoader<Label> {
     public void loadComponent() {
         assignXmlDescriptor(resultComponent, element);
 
-        loadDatasource(resultComponent, element);
+        loadContainer(resultComponent, element);
+        if (resultComponent.getValueSource() == null) {
+            loadDatasource(resultComponent, element);
+        }
 
         loadVisible(resultComponent, element);
         loadAlign(resultComponent, element);
@@ -60,5 +71,45 @@ public class LabelLoader extends AbstractDatasourceComponentLoader<Label> {
         loadCss(resultComponent, element);
 
         resultComponent.setFormatter(loadFormatter(element));
+    }
+
+    // CAUTION copied from AbstractFieldLoader
+    @SuppressWarnings("unchecked")
+    protected void loadContainer(Label component, Element element) {
+        String containerId = element.attributeValue("dataContainer");
+        String property = element.attributeValue("property");
+
+        // In case a component has only a property,
+        // we try to obtain `dataContainer` from a parent element.
+        // For instance, a component is placed within the Form component
+        if (Strings.isNullOrEmpty(containerId) && property != null) {
+            containerId = getParentDataContainer(element);
+        }
+
+        if (!Strings.isNullOrEmpty(containerId)) {
+            if (property == null) {
+                throw new GuiDevelopmentException(
+                        String.format("Can't set container '%s' for component '%s' because 'property' " +
+                                "attribute is not defined", containerId, component.getId()), context.getFullFrameId());
+            }
+
+            FrameOwner frameOwner = context.getFrame().getFrameOwner();
+            ScreenData screenData = UiControllerUtils.getScreenData(frameOwner);
+            InstanceContainer container = screenData.getContainer(containerId);
+
+            component.setValueSource(new ContainerValueSource<>(container, property));
+        }
+    }
+
+    // CAUTION copied from AbstractFieldLoader
+    private String getParentDataContainer(Element element) {
+        Element parent = element.getParent();
+        while (parent != null) {
+            if (layoutLoaderConfig.getLoader(parent.getName()) != null) {
+                return parent.attributeValue("dataContainer");
+            }
+            parent = parent.getParent();
+        }
+        return null;
     }
 }
