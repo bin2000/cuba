@@ -94,17 +94,6 @@ public abstract class AbstractFieldLoader<T extends Field> extends AbstractDatas
         }
     }
 
-    private String getParentDataContainer(Element element) {
-        Element parent = element.getParent();
-        while (parent != null) {
-            if (layoutLoaderConfig.getLoader(parent.getName()) != null) {
-                return parent.attributeValue("dataContainer");
-            }
-            parent = parent.getParent();
-        }
-        return null;
-    }
-
     protected void loadRequired(Field component, Element element) {
         String required = element.attributeValue("required");
         if (StringUtils.isNotEmpty(required)) {
