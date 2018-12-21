@@ -995,7 +995,7 @@ public abstract class AbstractComponentLoader<T extends Component> implements Co
     }
 
     @SuppressWarnings("unchecked")
-    protected void loadContainer(HasValueSource component, Element element) {
+    protected void loadContainer(T component, Element element) {
         String containerId = element.attributeValue("dataContainer");
         String property = element.attributeValue("property");
 
@@ -1010,14 +1010,16 @@ public abstract class AbstractComponentLoader<T extends Component> implements Co
             if (property == null) {
                 throw new GuiDevelopmentException(
                         String.format("Can't set container '%s' for component '%s' because 'property' " +
-                                "attribute is not defined", containerId, ((Component) component).getId()), context.getFullFrameId());
+                                "attribute is not defined", containerId, component.getId()), context.getFullFrameId());
             }
 
             FrameOwner frameOwner = context.getFrame().getFrameOwner();
             ScreenData screenData = UiControllerUtils.getScreenData(frameOwner);
             InstanceContainer container = screenData.getContainer(containerId);
 
-            component.setValueSource(new ContainerValueSource<>(container, property));
+            if (component instanceof HasValueSource) {
+                ((HasValueSource) component).setValueSource(new ContainerValueSource<>(container, property));
+            }
         }
     }
 
